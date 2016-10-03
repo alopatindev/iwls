@@ -4,4 +4,6 @@ version = "0.0.1"
 authors = ["Alexander Lopatin <github.com/alopatindev>"]
 
 [dependencies]
-wifiscanner = "0.3.3"
+clap = ">=2.13.0"
+nalgebra = ">=0.8.2"
+wifiscanner = ">=0.3.3"
