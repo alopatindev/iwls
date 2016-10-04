@@ -5,5 +5,9 @@ authors = ["Alexander Lopatin <github.com/alopatindev>"]
 
 [dependencies]
 clap = ">=2.13.0"
+clippy = {version = "*", optional = true}
 nalgebra = ">=0.8.2"
 wifiscanner = ">=0.3.3"
+
+[features]
+default = []

@@ -1,3 +1,6 @@
+#![cfg_attr(feature="clippy", feature(plugin))]
+#![cfg_attr(feature="clippy", plugin(clippy))]
+
 #[macro_use]
 extern crate clap;
 extern crate iwls;
@@ -13,7 +16,7 @@ fn watch() {
 
     loop {
         let now = time::Instant::now();
-        list_access_points(true);
+        clear_terminal_and_list_access_points();
         let dt = now.elapsed();
         if dt < interval {
             thread::sleep(interval - dt);
@@ -27,6 +30,6 @@ fn main() {
     if matches.is_present("w") {
         watch();
     } else {
-        list_access_points(false);
+        list_access_points();
     }
 }

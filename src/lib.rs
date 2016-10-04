@@ -1,3 +1,6 @@
+#![cfg_attr(feature="clippy", feature(plugin))]
+#![cfg_attr(feature="clippy", plugin(clippy))]
+
 extern crate nalgebra;
 extern crate wifiscanner;
 
@@ -17,13 +20,14 @@ struct AccessPoint {
     channel: u8,
 }
 
-pub fn list_access_points(clear: bool) {
+pub fn list_access_points() {
     let points = scan_access_points();
+    format_access_points(&points);
+}
 
-    if clear {
-        clear_terminal();
-    }
-
+pub fn clear_terminal_and_list_access_points() {
+    let points = scan_access_points();
+    clear_terminal();
     format_access_points(&points);
 }
 
@@ -55,7 +59,7 @@ fn scan_access_points() -> Vec<AccessPoint> {
 
 fn format_access_points(points: &Vec<AccessPoint>) {
     println!("{0:<20} {1:<20} {2:<8} {3}",
-             "SSID",
+             "ESSID",
              "Mac",
              "Quality",
              "Channel");
