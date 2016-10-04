@@ -1,0 +1,26 @@
+language: rust
+
+rust:
+  - stable
+  - beta
+  - nightly
+
+matrix:
+  include:
+    - rust: stable
+      env: CARGO_ARGS=""
+    - rust: beta
+      env: CARGO_ARGS=""
+    - rust: nightly
+      env: CARGO_ARGS="--features clippy"
+
+before_script: (cargo install rustfmt || true)
+
+script:
+  - set -e
+  - export PATH="${PATH}:${HOME}/.cargo/bin"
+  - export RUST_BACKTRACE=1
+  - cargo fmt -- --write-mode=diff
+  - cargo build ${CARGO_ARGS} --verbose --bin iwls
+  - cargo test ${CARGO_ARGS} --verbose --bin iwls
+  - cargo run ${CARGO_ARGS} --verbose --bin iwls
