@@ -105,7 +105,7 @@ fn compute_channels_load(points: &[AccessPoint]) -> ChannelsLoad {
     }
 
     channels.iter()
-        .map(|(ch, channel)| (*ch, channel.signal_load / channel.number_of_points as f64))
+        .map(|(id, channel)| (*id, channel.signal_load / channel.number_of_points as f64))
         .collect::<ChannelsLoad>()
 }
 
@@ -127,15 +127,15 @@ fn signal_to_quality(signal_level: &str) -> f64 {
     clamp(quality, 0.0, 100.0)
 }
 
-fn parse_channel(channel: &str) -> ChannelId {
-    channel.parse().unwrap_or(UNKNOWN_CHANNEL)
+fn parse_channel(id: &str) -> ChannelId {
+    id.parse().unwrap_or(UNKNOWN_CHANNEL)
 }
 
-fn to_readable_channel(channel: ChannelId) -> String {
-    if channel == UNKNOWN_CHANNEL || channel > MAX_CHANNEL {
+fn to_readable_channel(id: ChannelId) -> String {
+    if id == UNKNOWN_CHANNEL || id > MAX_CHANNEL {
         "Unknown".to_string()
     } else {
-        channel.to_string()
+        id.to_string()
     }
 }
 
@@ -158,16 +158,16 @@ mod tests {
             assert_eq!(i.to_string(), to_readable_channel(i));
         }
 
-        assert_eq!("Unknown".to_string(), to_readable_channel(UNKNOWN_CHANNEL));
-        assert_eq!("Unknown".to_string(), to_readable_channel(MAX_CHANNEL + 1));
+        assert_eq!("Unknown", to_readable_channel(UNKNOWN_CHANNEL));
+        assert_eq!("Unknown", to_readable_channel(MAX_CHANNEL + 1));
     }
 
     #[test]
     fn test_parse_channel() {
         use super::parse_channel;
 
-        assert_eq!(1, parse_channel(&"1".to_string()));
-        assert_eq!(UNKNOWN_CHANNEL, parse_channel(&"0".to_string()));
-        assert_eq!(UNKNOWN_CHANNEL, parse_channel(&"foo".to_string()));
+        assert_eq!(1, parse_channel("1"));
+        assert_eq!(UNKNOWN_CHANNEL, parse_channel("0"));
+        assert_eq!(UNKNOWN_CHANNEL, parse_channel("foo"));
     }
 }
