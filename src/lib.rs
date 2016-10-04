@@ -9,13 +9,13 @@ use std::cmp;
 use std::collections::HashMap;
 use std::process::Command;
 
-type ChannelId = u8;
+pub type ChannelId = u8;
 
-const MAX_CHANNEL: ChannelId = 14;
-const UNKNOWN_CHANNEL: ChannelId = 0;
+pub const MAX_CHANNEL: ChannelId = 14;
+pub const UNKNOWN_CHANNEL: ChannelId = 0;
 
-const MIN_SIGNAL: f64 = -100.0;
-const MAX_SIGNAL: f64 = -50.0;
+pub const MIN_SIGNAL: f64 = -100.0;
+pub const MAX_SIGNAL: f64 = -50.0;
 
 struct AccessPoint {
     ssid: String,
@@ -29,6 +29,8 @@ struct Channel {
     number_of_points: usize,
     signal_load: f64,
 }
+
+type ChannelsLoad = HashMap<ChannelId, f64>;
 
 pub fn list_access_points() {
     let points = scan_access_points();
@@ -69,7 +71,7 @@ fn scan_access_points() -> Vec<AccessPoint> {
     }
 }
 
-fn print_access_points(points: &Vec<AccessPoint>) {
+fn print_access_points(points: &[AccessPoint]) {
     println!("{0:<20} {1:<20} {2:<8} {3}",
              "ESSID",
              "Mac",
@@ -85,8 +87,9 @@ fn print_access_points(points: &Vec<AccessPoint>) {
     }
 }
 
-fn compute_channels_load(points: &Vec<AccessPoint>) -> HashMap<ChannelId, f64> {
+fn compute_channels_load(points: &[AccessPoint]) -> ChannelsLoad {
     // FIXME: probably median finding should be used for better results
+
     let mut channels = HashMap::with_capacity(MAX_CHANNEL as usize);
 
     for p in &points[..] {
@@ -101,14 +104,12 @@ fn compute_channels_load(points: &Vec<AccessPoint>) -> HashMap<ChannelId, f64> {
         channel.signal_load += p.quality;
     }
 
-    let channels_load: HashMap<ChannelId, f64> = channels.iter()
+    channels.iter()
         .map(|(ch, channel)| (*ch, channel.signal_load / channel.number_of_points as f64))
-        .collect();
-
-    channels_load
+        .collect::<ChannelsLoad>()
 }
 
-fn print_suggested_channels(points: &Vec<AccessPoint>) {
+fn print_suggested_channels(points: &[AccessPoint]) {
     let channels_load = compute_channels_load(points);
     println!("{:?}", channels_load);
     // TODO
@@ -118,7 +119,7 @@ fn to_readable_quality(quality: f64) -> String {
     format!("{}%", quality * 100.0)
 }
 
-fn signal_to_quality(signal_level: &String) -> f64 {
+fn signal_to_quality(signal_level: &str) -> f64 {
     let signal = signal_level.parse().ok().map_or(MIN_SIGNAL, |x| x);
     let signal = clamp(signal, MIN_SIGNAL, MAX_SIGNAL);
     let offset = -MIN_SIGNAL;
@@ -126,15 +127,15 @@ fn signal_to_quality(signal_level: &String) -> f64 {
     clamp(quality, 0.0, 100.0)
 }
 
-fn parse_channel(channel: &String) -> ChannelId {
+fn parse_channel(channel: &str) -> ChannelId {
     channel.parse().unwrap_or(UNKNOWN_CHANNEL)
 }
 
 fn to_readable_channel(channel: ChannelId) -> String {
-    if channel == UNKNOWN_CHANNEL {
+    if channel == UNKNOWN_CHANNEL || channel > MAX_CHANNEL {
         "Unknown".to_string()
     } else {
-        format!("{}", channel)
+        channel.to_string()
     }
 }
 
@@ -142,5 +143,31 @@ fn clear_terminal() {
     // FIXME: use something portable
     if let Ok(output) = Command::new("clear").output() {
         print!("{}", String::from_utf8_lossy(&output.stdout));
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_to_readable_channel() {
+        use super::to_readable_channel;
+
+        for i in 1..(MAX_CHANNEL + 1) {
+            assert_eq!(i.to_string(), to_readable_channel(i));
+        }
+
+        assert_eq!("Unknown".to_string(), to_readable_channel(UNKNOWN_CHANNEL));
+        assert_eq!("Unknown".to_string(), to_readable_channel(MAX_CHANNEL + 1));
+    }
+
+    #[test]
+    fn test_parse_channel() {
+        use super::parse_channel;
+
+        assert_eq!(1, parse_channel(&"1".to_string()));
+        assert_eq!(UNKNOWN_CHANNEL, parse_channel(&"0".to_string()));
+        assert_eq!(UNKNOWN_CHANNEL, parse_channel(&"foo".to_string()));
     }
 }
