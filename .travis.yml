@@ -26,3 +26,8 @@ script:
   - cargo build ${CARGO_ARGS} --verbose --bin iwls
   - cargo test ${CARGO_ARGS} --verbose --bin iwls
   - cargo run ${CARGO_ARGS} --verbose --bin iwls
+
+after_success:
+  - scripts/build_kcov.sh
+  - scripts/send_kcov.sh
+  - bash <(curl -s https://codecov.io/bash)
