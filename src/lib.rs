@@ -5,8 +5,8 @@ extern crate nalgebra;
 extern crate wifiscanner;
 
 use nalgebra::clamp;
-use std::cmp;
 use std::process::Command;
+use std::cmp;
 
 const MIN_SIGNAL: f32 = -100.0;
 const MAX_SIGNAL: f32 = -50.0;
