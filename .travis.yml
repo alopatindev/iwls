@@ -13,6 +13,8 @@ matrix:
   include:
     - rust: nightly
       env: CARGO_ARGS="--features clippy"
+  exclude:
+    - rust: nightly
 
 before_script: (cargo install rustfmt || true)
 
