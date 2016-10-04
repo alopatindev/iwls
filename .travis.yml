@@ -32,8 +32,8 @@ script:
   - export PATH="${PATH}:${HOME}/.cargo/bin"
   - export RUST_BACKTRACE=1
   - cargo fmt -- --write-mode=diff
-  - cargo build ${CARGO_ARGS} --verbose --bin iwls
-  - cargo test ${CARGO_ARGS} --verbose --bin iwls
+  - cargo build ${CARGO_ARGS} --verbose
+  - cargo test ${CARGO_ARGS} --verbose
   - cargo run ${CARGO_ARGS} --verbose --bin iwls
 
 after_success:
