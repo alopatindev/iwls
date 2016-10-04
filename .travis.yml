@@ -5,12 +5,12 @@ rust:
   - beta
   - nightly
 
+env:
+  global:
+    - CARGO_ARGS=""
+
 matrix:
   include:
-    - rust: stable
-      env: CARGO_ARGS=""
-    - rust: beta
-      env: CARGO_ARGS=""
     - rust: nightly
       env: CARGO_ARGS="--features clippy"
 
