@@ -13,6 +13,8 @@ const WATCH_INTERVAL_MS: u64 = 1_000;
 const MIN_SIGNAL: f32 = -100.0;
 const MAX_SIGNAL: f32 = -50.0;
 
+const UNKNOWN_CHANNEL: u8 = 0;
+
 struct AccessPoint {
     ssid: String,
     mac: String,
@@ -68,7 +70,7 @@ fn format_access_points(points: &Vec<AccessPoint>) {
                  p.ssid,
                  p.mac,
                  to_readable_quality(p.quality),
-                 p.channel);
+                 to_readable_channel(p.channel));
     }
 }
 
@@ -84,7 +86,15 @@ fn signal_to_quality(signal_level: &String) -> f32 {
 }
 
 fn parse_channel(channel: &String) -> u8 {
-    channel.parse().unwrap()
+    channel.parse().unwrap_or(UNKNOWN_CHANNEL)
+}
+
+fn to_readable_channel(channel: u8) -> String {
+    if channel == UNKNOWN_CHANNEL {
+        "Unknown".to_string()
+    } else {
+        format!("{}", channel)
+    }
 }
 
 fn clear_terminal() {
