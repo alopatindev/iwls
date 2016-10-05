@@ -5,12 +5,14 @@ extern crate nalgebra;
 extern crate wifiscanner;
 
 use nalgebra::clamp;
-use std::cmp;
-use std::collections::HashMap;
+use std::{cmp, env};
 use std::process::Command;
+
+type ChannelsLoad = Vec<(ChannelId, f64)>;
 
 pub type ChannelId = u8;
 
+pub const MIN_CHANNEL: ChannelId = 1;
 pub const MAX_CHANNEL: ChannelId = 14;
 pub const UNKNOWN_CHANNEL: ChannelId = 0;
 
@@ -18,8 +20,11 @@ pub const MIN_SIGNAL: f64 = -100.0;
 pub const MAX_SIGNAL: f64 = -50.0;
 
 const MIN_CHANNELS_DISTANCE: ChannelId = 5;
+const MAX_SUGGESTIONS: usize = 5;
 
-#[derive(Debug)]
+const LOW_LOAD: f64 = 0.2;
+
+#[derive(Debug, Clone)]
 struct Point {
     ssid: String,
     mac: String,
@@ -27,30 +32,39 @@ struct Point {
     channel: ChannelId,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 struct Channel {
     number_of_points: usize,
     signal_load: f64,
 }
 
-struct Suggestion {
-    current_point: Vec<ChannelId>,
-    new_point: Vec<ChannelId>,
+impl Channel {
+    fn increment(&mut self, quality: f64) {
+        self.number_of_points += 1;
+        self.signal_load += quality;
+    }
 }
 
-type ChannelsLoad = HashMap<ChannelId, f64>;
-
 pub fn list_access_points() {
-    let points = scan_access_points();
-    print_access_points(&points);
-    print_suggested_channels(&points);
+    list_access_points_internal(false);
 }
 
 pub fn clear_terminal_and_list_access_points() {
+    list_access_points_internal(true);
+}
+
+fn list_access_points_internal(clear_term: bool) {
     let points = scan_access_points();
-    clear_terminal();
+    let current_point = get_current_point(&points);
+
+    if clear_term {
+        clear_terminal();
+    }
+
     print_access_points(&points);
-    print_suggested_channels(&points);
+
+    println!("");
+    print_suggested_channels(&points, current_point);
 }
 
 fn scan_access_points() -> Vec<Point> {
@@ -98,23 +112,43 @@ fn print_access_points(points: &[Point]) {
 fn compute_channels_load(points: &[Point]) -> ChannelsLoad {
     // FIXME: probably median finding should be used for better results
 
-    let mut channels = HashMap::with_capacity(MAX_CHANNEL as usize);
-
-    for p in &points[..] {
-        let mut channel = channels.entry(p.channel)
-            .or_insert_with(|| {
-                Channel {
-                    number_of_points: 0,
-                    signal_load: 0.0,
-                }
-            });
-        channel.number_of_points += 1;
-        channel.signal_load += p.quality;
+    let mut channels = Vec::with_capacity(MAX_CHANNEL as usize);
+    for i in 1..(MAX_CHANNEL + 1) {
+        let value = (i, Channel::default());
+        channels.push(value);
     }
 
-    channels.iter()
-        .map(|(id, channel)| (*id, channel.signal_load / channel.number_of_points as f64))
-        .collect::<ChannelsLoad>()
+    for p in &points[..] {
+        let index = p.channel as usize - 1;
+        channels[index].1.increment(p.quality);
+
+        let (left, right) = intersected_channels(p.channel);
+
+        let mut quality = p.quality;
+        for &i in left.iter() {
+            quality *= 0.5;
+            channels[i as usize - 1].1.increment(quality);
+        }
+
+        let mut quality = p.quality;
+        for &i in right.iter() {
+            quality *= 0.5;
+            channels[i as usize - 1].1.increment(quality);
+        }
+    }
+
+    let result = channels.into_iter()
+        .map(|(id, channel)| {
+            let average_load = if channel.number_of_points > 0 {
+                channel.signal_load / channel.number_of_points as f64
+            } else {
+                0.0
+            };
+            (id, average_load)
+        })
+        .collect::<ChannelsLoad>();
+
+    result
 }
 
 fn channels_intersect(a: ChannelId, b: ChannelId) -> bool {
@@ -126,18 +160,96 @@ fn channels_intersect(a: ChannelId, b: ChannelId) -> bool {
     distance < MIN_CHANNELS_DISTANCE
 }
 
-fn compute_suggestion(current: Option<&Point>, other_points: &[Point]) -> Suggestion {
-    // let channels_load = compute_channels_load(current, other_points);
-    unimplemented!()
+fn intersected_channels(x: ChannelId) -> (Vec<ChannelId>, Vec<ChannelId>) {
+    let limit = 2;
+
+    let mut left = Vec::with_capacity(limit);
+    let mut y = x;
+    let mut i = 0;
+    while y > MIN_CHANNEL && i < limit {
+        y -= 1;
+        i += 1;
+        if channels_intersect(y, x) {
+            left.push(y);
+        }
+    }
+
+    let mut right = Vec::with_capacity(limit);
+    let mut y = x;
+    let mut i = 0;
+    while y < MAX_CHANNEL && i < limit {
+        y += 1;
+        i += 1;
+        if channels_intersect(y, x) {
+            right.push(y);
+        }
+    }
+
+    (left, right)
 }
 
-fn print_suggested_channels(points: &[Point]) {
-    // TODO
+fn least_intersected(id: ChannelId) -> bool {
+    for &i in &[1, 6, 11, 14] {
+        if i == id {
+            return true;
+        }
+    }
+
+    false
+}
+
+fn compute_suggestion(other_points: &[Point]) -> Vec<ChannelId> {
+    let mut channels_load = compute_channels_load(other_points);
+    channels_load.sort_by(|a, b| {
+        if a.1 < LOW_LOAD && least_intersected(a.0) {
+            cmp::Ordering::Less
+        } else {
+            a.1.partial_cmp(&b.1).unwrap_or(cmp::Ordering::Less)
+        }
+    });
+    channels_load.iter()
+        .take(MAX_SUGGESTIONS)
+        .map(|&(id, _)| id)
+        .collect()
+}
+
+fn print_suggested_channels(points: &[Point], current_point: Option<&Point>) {
+    match current_point {
+        Some(point) => {
+            let points: Vec<Point> = points.into_iter()
+                .filter(|x| x.mac != point.mac)
+                .map(|x| x.clone())
+                .collect();
+            let what = format!("\"{}\"", point.ssid);
+            print_suggestion(&points, &what);
+        }
+        None => {
+            println!("Current access point is unknown");
+        }
+    }
+
+    print_suggestion(&points, "a new router");
+}
+
+fn print_suggestion(points: &[Point], what: &str) {
+    let xs = compute_suggestion(points);
+    if xs.len() > 0 {
+        let other_channels: String = xs.iter()
+            .skip(1)
+            .map(|i| i.to_string())
+            .collect::<Vec<String>>()
+            .join(", ");
+        println!("The best channel for {} is {} (or maybe {})",
+                 what,
+                 xs[0],
+                 other_channels);
+    } else {
+        println!("Cannot suggest a good channel for {}", what);
+    }
 }
 
 fn to_readable_quality(quality: f64) -> String {
     let result = format!("{:.1}%", quality * 100.0);
-    println!("result = {}", result);
     result
 }
 
@@ -159,6 +271,34 @@ fn to_readable_channel(id: ChannelId) -> String {
     } else {
         id.to_string()
     }
+}
+
+fn get_current_point(points: &[Point]) -> Option<&Point> {
+    let mac = get_current_point_mac();
+    mac.and_then(|m| points.iter().filter(|p| m == p.mac).next())
+}
+
+fn get_current_point_mac() -> Option<String> {
+    const PATH_ENV: &'static str = "PATH";
+    let path_system = "/usr/sbin:/sbin";
+    let path = env::var_os(PATH_ENV).map_or(path_system.to_string(), |v| {
+        format!("{}:{}", v.to_string_lossy().into_owned(), path_system)
+    });
+
+    let output = Command::new("iwconfig")
+        .env(PATH_ENV, path)
+        .output();
+
+    if let Ok(output) = output {
+        let data = String::from_utf8_lossy(&output.stdout);
+        return data.lines()
+            .map(|x| x.split(" Access Point: ").collect::<Vec<&str>>())
+            .filter(|xs| xs.len() == 2 && !xs[1].is_empty())
+            .map(|xs| xs[1].trim_right().to_string())
+            .next();
+    }
+
+    None
 }
 
 fn clear_terminal() {
@@ -248,33 +388,35 @@ mod tests {
             }
         };
 
+        let assert_compute_suggestion = |expect: &[ChannelId], input: &[Point]| {
+            assert_eq!(expect, compute_suggestion(input).as_slice())
+        };
+
         {
-            let y = compute_suggestion(None, &[]);
-            assert!(y.current_point.is_empty());
-            assert_eq!(&[1, 6, 11, 14, 2], &y.new_point[..]);
+            let current = make_point(1.0, 2, "current");
+            let mut input = vec![];
+            assert_compute_suggestion(&[14, 11, 6, 1, 2], &input[..]);
+            input.push(current);
+            assert_compute_suggestion(&[14, 11, 6, 5, 7], &input[..]);
         }
 
         {
             let current = make_point(1.0, 2, "current");
-            let y = compute_suggestion(Some(&current), &[]);
-            assert_eq!(&[1, 6, 11, 14, 2], &y.current_point[..]);
-            assert_eq!(&[1, 6, 11, 14, 2], &y.new_point[..]);
+            let a = make_point(0.9, 11, "a");
+            let mut input = vec![a];
+            assert_compute_suggestion(&[14, 6, 1, 2, 3], &input[..]);
+            input.push(current);
+            assert_compute_suggestion(&[14, 6, 5, 7, 8], &input[..]);
         }
 
         {
             let current = make_point(1.0, 2, "current");
-            let xs = &[make_point(1.0, 11, "a")];
-            let y = compute_suggestion(Some(&current), xs);
-            assert_eq!(&[1, 14, 6, 2, 3], &y.current_point[..]);
-            assert_eq!(&[14, 6, 2, 3, 4], &y.new_point[..]);
-        }
-
-        {
-            let current = make_point(1.0, 2, "current");
-            let xs = &[make_point(1.0, 11, "a"), make_point(0.3, 5, "b")];
-            let y = compute_suggestion(Some(&current), xs);
-            assert_eq!(&[1, 14, 6, 2, 3], &y.current_point[..]);
-            assert_eq!(&[14, 6, 5, 7], &y.new_point[..]);
+            let a = make_point(0.9, 11, "a");
+            let b = make_point(0.3, 5, "b");
+            let mut input = vec![a, b];
+            assert_compute_suggestion(&[14, 6, 1, 2, 8], &input[..]);
+            input.push(current);
+            assert_compute_suggestion(&[14, 8, 7, 6, 4], &input[..]);
         }
     }
 }
