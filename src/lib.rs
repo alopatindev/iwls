@@ -6,6 +6,7 @@ extern crate wifiscanner;
 
 use nalgebra::clamp;
 use std::{cmp, env};
+use std::io::Write;
 use std::process::Command;
 
 type ChannelsLoad = Vec<(ChannelId, f64)>;
@@ -44,6 +45,13 @@ impl Channel {
         self.signal_load += quality;
     }
 }
+
+macro_rules! println_err(
+    ($($arg:tt)*) => { {
+        let r = writeln!(&mut ::std::io::stderr(), $($arg)*);
+        r.expect("failed printing to stderr");
+    } }
+);
 
 pub fn list_access_points() {
     list_access_points_internal(false);
@@ -89,7 +97,10 @@ fn scan_access_points() -> Vec<Point> {
 
             result
         }
-        Err(_) => vec![],
+        Err(e) => {
+            println_err!("Error: iwlist {:?}", e);
+            vec![]
+        }
     }
 }
 
@@ -285,17 +296,21 @@ fn get_current_point_mac() -> Option<String> {
         format!("{}:{}", v.to_string_lossy().into_owned(), path_system)
     });
 
-    let output = Command::new("iwconfig")
+    const COMMAND: &'static str = "iwconfig";
+    let output = Command::new(COMMAND)
         .env(PATH_ENV, path)
         .output();
 
-    if let Ok(output) = output {
-        let data = String::from_utf8_lossy(&output.stdout);
-        return data.lines()
-            .map(|x| x.split(" Access Point: ").collect::<Vec<&str>>())
-            .filter(|xs| xs.len() == 2 && !xs[1].is_empty())
-            .map(|xs| xs[1].trim_right().to_string())
-            .next();
+    match output {
+        Ok(output) => {
+            let data = String::from_utf8_lossy(&output.stdout);
+            return data.lines()
+                .map(|x| x.split(" Access Point: ").collect::<Vec<&str>>())
+                .filter(|xs| xs.len() == 2 && !xs[1].is_empty())
+                .map(|xs| xs[1].trim_right().to_string())
+                .next();
+        }
+        Err(e) => println_err!("Error: {} {:?}", COMMAND, e),
     }
 
     None
