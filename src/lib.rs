@@ -211,6 +211,7 @@ fn least_intersected(id: ChannelId) -> bool {
 
 fn compute_suggestion(other_points: &[Point]) -> Vec<ChannelId> {
     let mut channels_load = compute_channels_load(other_points);
+
     channels_load.sort_by(|a, b| {
         if a.1 < LOW_LOAD && least_intersected(a.0) {
             cmp::Ordering::Less
@@ -239,16 +240,21 @@ fn print_suggested_channels(points: &[Point], current_point: Option<&Point>) {
         }
     }
 
-    print_suggestion(&points, "a new router");
+    print_suggestion(points, "a new router");
+
+    let channels_load = compute_channels_load(points);
+    let channels_load_readable = to_readable_channels_load(&channels_load);
+    println!("Channels load: {}", channels_load_readable);
 }
 
 fn print_suggestion(points: &[Point], what: &str) {
     let xs = compute_suggestion(points);
+
     if xs.len() > 0 {
         let other_channels: String = xs.iter()
             .skip(1)
             .map(|i| i.to_string())
-            .collect::<Vec<String>>()
+            .collect::<Vec<_>>()
             .join(", ");
         println!("The best channel for {} is {} (or maybe {})",
                  what,
@@ -259,8 +265,31 @@ fn print_suggestion(points: &[Point], what: &str) {
     }
 }
 
+fn unit_to_percent(x: f64) -> f64 {
+    x * 100.0
+}
+
+fn to_readable_channels_load(channels_load: &ChannelsLoad) -> String {
+    let is_zero = |x| x <= std::f64::EPSILON;
+    let alot_of_zeros = channels_load.iter()
+        .filter(|x| is_zero(x.1))
+        .collect::<Vec<_>>()
+        .len() > 1;
+
+    let mut result: Vec<String> = channels_load.iter()
+        .filter(|x| !alot_of_zeros || !is_zero(x.1))
+        .map(|x| format!("{} is {:.1}%", x.0, unit_to_percent(x.1)))
+        .collect();
+
+    if alot_of_zeros {
+        result.push("others are 0.0%".to_string());
+    }
+
+    result.join(", ")
+}
+
 fn to_readable_quality(quality: f64) -> String {
-    let result = format!("{:.1}%", quality * 100.0);
+    let result = format!("{:.1}%", unit_to_percent(quality));
     result
 }
 
