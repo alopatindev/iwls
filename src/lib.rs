@@ -129,7 +129,7 @@ fn compute_channels_load(points: &[Point]) -> ChannelsLoad {
         channels.push(value);
     }
 
-    for p in &points[..] {
+    for p in points.iter().filter(|p| p.channel != UNKNOWN_CHANNEL) {
         let index = p.channel as usize - 1;
         channels[index].1.increment(p.quality);
 
@@ -219,6 +219,7 @@ fn compute_suggestion(other_points: &[Point]) -> Vec<ChannelId> {
             a.1.partial_cmp(&b.1).unwrap_or(cmp::Ordering::Less)
         }
     });
+
     channels_load.iter()
         .take(MAX_SUGGESTIONS)
         .map(|&(id, _)| id)
@@ -461,6 +462,11 @@ mod tests {
             assert_compute_suggestion(&[14, 6, 1, 2, 8], &input[..]);
             input.push(current);
             assert_compute_suggestion(&[14, 8, 7, 6, 4], &input[..]);
+        }
+
+        {
+            let a = make_point(0.0, UNKNOWN_CHANNEL, "current");
+            assert_compute_suggestion(&[14, 11, 6, 1, 2], &[a]);
         }
     }
 }
