@@ -2,12 +2,14 @@
 #![cfg_attr(feature="clippy", plugin(clippy))]
 
 extern crate nalgebra;
+extern crate users;
 extern crate wifiscanner;
 
 use nalgebra::clamp;
 use std::{cmp, env};
 use std::io::Write;
 use std::process::Command;
+use users::{Users, UsersCache};
 
 type ChannelLoad = (ChannelId, f64);
 type ChannelsLoad = Vec<ChannelLoad>;
@@ -68,6 +70,14 @@ pub fn list_access_points(clear_term: bool, suggestions: bool) {
     if suggestions {
         println!("");
         print_suggested_channels(&points, current_point);
+    }
+}
+
+pub fn check_current_user() {
+    let cache = UsersCache::new();
+    let is_root = cache.get_current_uid() == 0;
+    if !is_root {
+        println!("Warning: running as normal user; it's recommended to run as root");
     }
 }
 

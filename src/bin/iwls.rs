@@ -11,7 +11,7 @@ use std::{thread, time};
 
 const WATCH_INTERVAL_MS: u64 = 1_000;
 
-fn watch(suggestions: bool) {
+fn run_watch(suggestions: bool) {
     let interval = time::Duration::from_millis(WATCH_INTERVAL_MS);
     let clear_term = true;
 
@@ -19,6 +19,7 @@ fn watch(suggestions: bool) {
         let now = time::Instant::now();
 
         list_access_points(clear_term, suggestions);
+        check_current_user();
 
         let dt = now.elapsed();
         if dt < interval {
@@ -27,15 +28,21 @@ fn watch(suggestions: bool) {
     }
 }
 
+fn run_single(suggestions: bool) {
+    let clear_term = false;
+    list_access_points(clear_term, suggestions);
+    check_current_user();
+}
+
 fn main() {
     let usage = "-w 'Watch mode'
                  -s 'Suggest channels'";
     let matches = App::new("iwls").args_from_usage(usage).get_matches();
     let suggestions = matches.is_present("s");
+
     if matches.is_present("w") {
-        watch(suggestions);
+        run_watch(suggestions);
     } else {
-        let clear_term = false;
-        list_access_points(clear_term, suggestions);
+        run_single(suggestions);
     }
 }
