@@ -9,4 +9,11 @@ iwls
 
 Shows available Wi-Fi access points and suggests the best channel to use.
 
+```
+cargo run --bin iwls -- -h
+cargo run --bin iwls -- -w -s
+```
+
+![Screenshot](https://raw.githubusercontent.com/alopatindev/assets/master/iwls.png)
+
 Licensed under the terms of MIT (read LICENSE.txt for details).
