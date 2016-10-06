@@ -53,15 +53,7 @@ macro_rules! println_err(
     } }
 );
 
-pub fn list_access_points() {
-    list_access_points_internal(false);
-}
-
-pub fn clear_terminal_and_list_access_points() {
-    list_access_points_internal(true);
-}
-
-fn list_access_points_internal(clear_term: bool) {
+pub fn list_access_points(clear_term: bool, suggestions: bool) {
     let points = scan_access_points();
     let current_point = get_current_point(&points);
 
@@ -71,8 +63,10 @@ fn list_access_points_internal(clear_term: bool) {
 
     print_access_points(&points);
 
-    println!("");
-    print_suggested_channels(&points, current_point);
+    if suggestions {
+        println!("");
+        print_suggested_channels(&points, current_point);
+    }
 }
 
 fn scan_access_points() -> Vec<Point> {

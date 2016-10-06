@@ -11,12 +11,15 @@ use std::{thread, time};
 
 const WATCH_INTERVAL_MS: u64 = 1_000;
 
-fn watch() {
+fn watch(suggestions: bool) {
     let interval = time::Duration::from_millis(WATCH_INTERVAL_MS);
+    let clear_term = true;
 
     loop {
         let now = time::Instant::now();
-        clear_terminal_and_list_access_points();
+
+        list_access_points(clear_term, suggestions);
+
         let dt = now.elapsed();
         if dt < interval {
             thread::sleep(interval - dt);
@@ -25,11 +28,14 @@ fn watch() {
 }
 
 fn main() {
-    let usage = "-w 'Watch mode'";
+    let usage = "-w 'Watch mode'
+                 -s 'Suggest channels'";
     let matches = App::new("iwls").args_from_usage(usage).get_matches();
+    let suggestions = matches.is_present("s");
     if matches.is_present("w") {
-        watch();
+        watch(suggestions);
     } else {
-        list_access_points();
+        let clear_term = false;
+        list_access_points(clear_term, suggestions);
     }
 }
