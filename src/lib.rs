@@ -133,7 +133,8 @@ fn compute_channels_load(points: &[Point]) -> ChannelsLoad {
     let n = points.len();
     let mut channels = vec![Vec::with_capacity(n); MAX_CHANNEL as usize];
 
-    for p in points.iter().filter(|p| p.channel != UNKNOWN_CHANNEL) {
+    let points = points.iter().filter(|p| is_valid_channel(p.channel));
+    for p in points {
         let index = p.channel as usize - 1;
         channels[index].push(p.quality);
 
@@ -316,11 +317,15 @@ fn parse_channel(id: &str) -> ChannelId {
 }
 
 fn to_readable_channel(id: ChannelId) -> String {
-    if id == UNKNOWN_CHANNEL || id > MAX_CHANNEL {
-        "Unknown".to_string()
-    } else {
+    if is_valid_channel(id) {
         id.to_string()
+    } else {
+        "Unknown".to_string()
     }
+}
+
+fn is_valid_channel(id: ChannelId) -> bool {
+    id != UNKNOWN_CHANNEL && id <= MAX_CHANNEL
 }
 
 fn get_current_point(points: &[Point]) -> Option<&Point> {
