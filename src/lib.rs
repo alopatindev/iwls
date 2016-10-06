@@ -2,10 +2,12 @@
 #![cfg_attr(feature="clippy", plugin(clippy))]
 
 extern crate nalgebra;
+extern crate order_stat;
 extern crate users;
 extern crate wifiscanner;
 
 use nalgebra::clamp;
+use order_stat::median_of_medians_by;
 use std::{cmp, env};
 use std::io::Write;
 use std::process::Command;
@@ -35,19 +37,6 @@ struct Point {
     mac: String,
     quality: f64,
     channel: ChannelId,
-}
-
-#[derive(Debug, Default)]
-struct Channel {
-    number_of_points: usize,
-    signal_load: f64,
-}
-
-impl Channel {
-    fn increment(&mut self, quality: f64) {
-        self.number_of_points += 1;
-        self.signal_load += quality;
-    }
 }
 
 macro_rules! println_err(
@@ -141,41 +130,42 @@ fn is_current_point(point: &Point, current_point: Option<&Point>) -> bool {
 }
 
 fn compute_channels_load(points: &[Point]) -> ChannelsLoad {
-    // FIXME: probably median finding should be used for better results
-
-    let mut channels = Vec::with_capacity(MAX_CHANNEL as usize);
-    for i in 1..(MAX_CHANNEL + 1) {
-        let value = (i, Channel::default());
-        channels.push(value);
-    }
+    let n = points.len();
+    let mut channels = vec![Vec::with_capacity(n); MAX_CHANNEL as usize];
 
     for p in points.iter().filter(|p| p.channel != UNKNOWN_CHANNEL) {
         let index = p.channel as usize - 1;
-        channels[index].1.increment(p.quality);
+        channels[index].push(p.quality);
 
         let (left, right) = intersected_channels(p.channel);
 
         let mut quality = p.quality;
         for &i in &left {
             quality *= 0.5;
-            channels[i as usize - 1].1.increment(quality);
+            channels[i as usize - 1].push(quality);
         }
 
         let mut quality = p.quality;
         for &i in &right {
             quality *= 0.5;
-            channels[i as usize - 1].1.increment(quality);
+            channels[i as usize - 1].push(quality);
         }
     }
 
-    channels.into_iter()
-        .map(|(id, channel)| {
-            let average_load = if channel.number_of_points > 0 {
-                channel.signal_load / channel.number_of_points as f64
-            } else {
+    channels.iter_mut()
+        .enumerate()
+        .map(|(i, mut load)| {
+            let channel = i as ChannelId + 1;
+            let load_median = if load.is_empty() {
                 0.0
+            } else {
+                let &mut median = median_of_medians_by(&mut load, |a, b| {
+                        a.partial_cmp(b).unwrap_or(cmp::Ordering::Less)
+                    })
+                    .1;
+                median
             };
-            (id, average_load)
+            (channel, load_median)
         })
         .collect::<ChannelsLoad>()
 }
@@ -480,7 +470,7 @@ mod tests {
             let mut input = vec![a, b];
             assert_compute_suggestion(&[14, 6, 1, 2, 8], &input[..]);
             input.push(current);
-            assert_compute_suggestion(&[14, 8, 7, 6, 4], &input[..]);
+            assert_compute_suggestion(&[14, 8, 7, 6, 9], &input[..]);
         }
 
         {
