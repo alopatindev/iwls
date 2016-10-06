@@ -61,7 +61,7 @@ pub fn list_access_points(clear_term: bool, suggestions: bool) {
         clear_terminal();
     }
 
-    print_access_points(&points);
+    print_access_points(&points, current_point);
 
     if suggestions {
         println!("");
@@ -98,19 +98,33 @@ fn scan_access_points() -> Vec<Point> {
     }
 }
 
-fn print_access_points(points: &[Point]) {
-    println!("{0:<20} {1:<20} {2:<8} {3}",
+fn print_access_points(points: &[Point], current_point: Option<&Point>) {
+    println!("{0:<20} {1:<20} {2:<8} {3:<9} {4}",
              "ESSID",
              "Mac",
              "Quality",
-             "Channel");
+             "Channel",
+             "Connected");
 
     for p in &points[..] {
-        println!("{0:<20} {1:<20} {2:<8} {3}",
+        let connected = if is_current_point(p, current_point) {
+            "*"
+        } else {
+            ""
+        };
+        println!("{0:<20} {1:<20} {2:<8} {3:<9} {4}",
                  p.ssid,
                  p.mac,
                  to_readable_quality(p.quality),
-                 to_readable_channel(p.channel));
+                 to_readable_channel(p.channel),
+                 connected);
+    }
+}
+
+fn is_current_point(point: &Point, current_point: Option<&Point>) -> bool {
+    match current_point {
+        Some(p) => p as *const Point == point as *const Point,
+        None => false,
     }
 }
 
