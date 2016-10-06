@@ -9,7 +9,9 @@ use std::{cmp, env};
 use std::io::Write;
 use std::process::Command;
 
-type ChannelsLoad = Vec<(ChannelId, f64)>;
+type ChannelLoad = (ChannelId, f64);
+type ChannelsLoad = Vec<ChannelLoad>;
+type ChannelsLoadSlice<'a> = &'a [ChannelLoad];
 
 pub type ChannelId = u8;
 
@@ -106,7 +108,7 @@ fn print_access_points(points: &[Point], current_point: Option<&Point>) {
              "Channel",
              "Connected");
 
-    for p in &points[..] {
+    for p in points {
         let connected = if is_current_point(p, current_point) {
             "*"
         } else {
@@ -144,19 +146,19 @@ fn compute_channels_load(points: &[Point]) -> ChannelsLoad {
         let (left, right) = intersected_channels(p.channel);
 
         let mut quality = p.quality;
-        for &i in left.iter() {
+        for &i in &left {
             quality *= 0.5;
             channels[i as usize - 1].1.increment(quality);
         }
 
         let mut quality = p.quality;
-        for &i in right.iter() {
+        for &i in &right {
             quality *= 0.5;
             channels[i as usize - 1].1.increment(quality);
         }
     }
 
-    let result = channels.into_iter()
+    channels.into_iter()
         .map(|(id, channel)| {
             let average_load = if channel.number_of_points > 0 {
                 channel.signal_load / channel.number_of_points as f64
@@ -165,9 +167,7 @@ fn compute_channels_load(points: &[Point]) -> ChannelsLoad {
             };
             (id, average_load)
         })
-        .collect::<ChannelsLoad>();
-
-    result
+        .collect::<ChannelsLoad>()
 }
 
 fn channels_intersect(a: ChannelId, b: ChannelId) -> bool {
@@ -239,7 +239,7 @@ fn print_suggested_channels(points: &[Point], current_point: Option<&Point>) {
         Some(point) => {
             let points: Vec<Point> = points.into_iter()
                 .filter(|x| x.mac != point.mac)
-                .map(|x| x.clone())
+                .cloned()
                 .collect();
             let what = format!("\"{}\"", point.ssid);
             print_suggestion(&points, &what);
@@ -252,14 +252,14 @@ fn print_suggested_channels(points: &[Point], current_point: Option<&Point>) {
     print_suggestion(points, "a new router");
 
     let channels_load = compute_channels_load(points);
-    let channels_load_readable = to_readable_channels_load(&channels_load);
+    let channels_load_readable = to_readable_channels_load(&channels_load[..]);
     println!("Channels load: {}", channels_load_readable);
 }
 
 fn print_suggestion(points: &[Point], what: &str) {
     let xs = compute_suggestion(points);
 
-    if xs.len() > 0 {
+    if !xs.is_empty() {
         let other_channels: String = xs.iter()
             .skip(1)
             .map(|i| i.to_string())
@@ -278,8 +278,9 @@ fn unit_to_percent(x: f64) -> f64 {
     x * 100.0
 }
 
-fn to_readable_channels_load(channels_load: &ChannelsLoad) -> String {
+fn to_readable_channels_load(channels_load: ChannelsLoadSlice) -> String {
     let is_zero = |x| x <= std::f64::EPSILON;
+
     let alot_of_zeros = channels_load.iter()
         .filter(|x| is_zero(x.1))
         .collect::<Vec<_>>()
@@ -324,7 +325,7 @@ fn to_readable_channel(id: ChannelId) -> String {
 
 fn get_current_point(points: &[Point]) -> Option<&Point> {
     let mac = get_current_point_mac();
-    mac.and_then(|m| points.iter().filter(|p| m == p.mac).next())
+    mac.and_then(|m| points.iter().find(|p| m == p.mac))
 }
 
 fn get_current_point_mac() -> Option<String> {
