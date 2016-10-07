@@ -3,6 +3,7 @@ name = "iwls"
 version = "0.0.1"
 authors = ["Alexander Lopatin <github.com/alopatindev>"]
 description = "Shows available Wi-Fi access points and suggests the best channel to use"
+repository = "https://github.com/alopatindev/iwls"
 license = "MIT"
 
 [lib]
