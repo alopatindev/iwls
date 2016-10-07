@@ -3,6 +3,11 @@ name = "iwls"
 version = "0.0.1"
 authors = ["Alexander Lopatin <github.com/alopatindev>"]
 
+[lib]
+name = "iwls"
+path = "src/lib.rs"
+doctest = false
+
 [dependencies]
 clap = ">=2.13.0"
 clippy = {version = "*", optional = true}
