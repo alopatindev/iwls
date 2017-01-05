@@ -181,7 +181,7 @@ fn channels_intersect(a: ChannelId, b: ChannelId) -> bool {
 }
 
 fn intersected_channels(x: ChannelId) -> (Vec<ChannelId>, Vec<ChannelId>) {
-    let limit = 2;
+    let limit = MIN_CHANNELS_DISTANCE as usize;
 
     let mut left = Vec::with_capacity(limit);
     let mut y = x;
@@ -220,19 +220,39 @@ fn least_intersected(id: ChannelId) -> bool {
 
 fn compute_suggestion(other_points: &[Point]) -> Vec<ChannelId> {
     let mut channels_load = compute_channels_load(other_points);
+    channels_load.sort_by(compare_channels_load);
 
-    channels_load.sort_by(|a, b| {
-        if a.1 < LOW_LOAD && least_intersected(a.0) {
-            cmp::Ordering::Less
-        } else {
-            a.1.partial_cmp(&b.1).unwrap_or(cmp::Ordering::Less)
-        }
-    });
+    let mut head = channels_load.iter()
+        .filter(|&&(id, load)| least_intersected(id) && load < LOW_LOAD)
+        .collect::<Vec<_>>();
 
-    channels_load.iter()
+    let mut tail = channels_load.iter()
+        .filter(|&&(id, _)| {
+            head.iter()
+                .filter(|&&&(id_from_head, _)| id_from_head == id)
+                .next()
+                .is_none()
+        })
+        .collect();
+    head.append(&mut tail);
+
+    head.iter()
         .take(MAX_SUGGESTIONS)
-        .map(|&(id, _)| id)
+        .map(|&&(id, _)| id)
         .collect()
+}
+
+fn compare_channels_load(a: &ChannelLoad, b: &ChannelLoad) -> cmp::Ordering {
+    let load_a = a.1;
+    let load_b = b.1;
+
+    if load_a == load_b {
+        b.0.partial_cmp(&a.0).unwrap()
+    } else if load_a < load_b {
+        cmp::Ordering::Less
+    } else {
+        cmp::Ordering::Greater
+    }
 }
 
 fn print_suggested_channels(points: &[Point], current_point: Option<&Point>) {
@@ -454,18 +474,18 @@ mod tests {
         {
             let current = make_point(1.0, 2, "current");
             let mut input = vec![];
-            assert_compute_suggestion(&[14, 11, 6, 1, 2], &input[..]);
+            assert_compute_suggestion(&[14, 11, 6, 1, 13], &input[..]);
             input.push(current);
-            assert_compute_suggestion(&[14, 11, 6, 5, 7], &input[..]);
+            assert_compute_suggestion(&[14, 11, 6, 13, 12], &input[..]);
         }
 
         {
             let current = make_point(1.0, 2, "current");
             let a = make_point(0.9, 11, "a");
             let mut input = vec![a];
-            assert_compute_suggestion(&[14, 6, 1, 2, 3], &input[..]);
+            assert_compute_suggestion(&[14, 6, 1, 5, 4], &input[..]);
             input.push(current);
-            assert_compute_suggestion(&[14, 6, 5, 7, 8], &input[..]);
+            assert_compute_suggestion(&[14, 6, 7, 8, 5], &input[..]);
         }
 
         {
@@ -473,14 +493,29 @@ mod tests {
             let a = make_point(0.9, 11, "a");
             let b = make_point(0.3, 5, "b");
             let mut input = vec![a, b];
-            assert_compute_suggestion(&[14, 6, 1, 2, 8], &input[..]);
+            assert_compute_suggestion(&[14, 1, 6, 2, 7], &input[..]);
             input.push(current);
-            assert_compute_suggestion(&[14, 8, 7, 6, 9], &input[..]);
+            assert_compute_suggestion(&[14, 6, 7, 8, 13], &input[..]);
         }
 
         {
             let a = make_point(0.0, UNKNOWN_CHANNEL, "current");
-            assert_compute_suggestion(&[14, 11, 6, 1, 2], &[a]);
+            assert_compute_suggestion(&[14, 11, 6, 1, 13], &[a]);
+        }
+    }
+
+    #[test]
+    fn test_compare_channels_load() {
+        for i in MIN_CHANNEL..(MAX_CHANNEL + 1) {
+            for j in MIN_CHANNEL..(MAX_CHANNEL + 1) {
+                if i != j {
+                    let a = (i, 0.0);
+                    let b = (j, 0.0);
+                    let x = compare_channels_load(&a, &b);
+                    let y = compare_channels_load(&b, &a);
+                    assert!(x != y);
+                }
+            }
         }
     }
 }
