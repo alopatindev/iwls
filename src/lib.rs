@@ -229,8 +229,7 @@ fn compute_suggestion(other_points: &[Point]) -> Vec<ChannelId> {
     let mut tail = channels_load.iter()
         .filter(|&&(id, _)| {
             head.iter()
-                .filter(|&&&(id_from_head, _)| id_from_head == id)
-                .next()
+                .find(|&&&(id_from_head, _)| id_from_head == id)
                 .is_none()
         })
         .collect();
@@ -246,7 +245,7 @@ fn compare_channels_load(a: &ChannelLoad, b: &ChannelLoad) -> cmp::Ordering {
     let load_a = a.1;
     let load_b = b.1;
 
-    if load_a == load_b {
+    if (load_a - load_b).abs() < std::f64::EPSILON {
         b.0.partial_cmp(&a.0).unwrap()
     } else if load_a < load_b {
         cmp::Ordering::Less
