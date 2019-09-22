@@ -17,7 +17,7 @@ clippy = {version = "0.0.114", optional = true}
 nalgebra = ">=0.8.2"
 order-stat = ">=0.1.3"
 users = ">=0.5.2"
-wifiscanner = ">=0.3.3"
+wifiscanner = { git = "https://github.com/alopatindev/wifiscanner.git", branch = "use-iw-dev-scan" }
 
 [features]
 default = []
