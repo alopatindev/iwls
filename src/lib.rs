@@ -1,5 +1,5 @@
-#![cfg_attr(feature="clippy", feature(plugin))]
-#![cfg_attr(feature="clippy", plugin(clippy))]
+#![cfg_attr(feature = "clippy", feature(plugin))]
+#![cfg_attr(feature = "clippy", plugin(clippy))]
 
 extern crate nalgebra;
 extern crate order_stat;
@@ -8,9 +8,9 @@ extern crate wifiscanner;
 
 use nalgebra::clamp;
 use order_stat::median_of_medians_by;
-use std::{cmp, env};
 use std::io::Write;
 use std::process::Command;
+use std::{cmp, env};
 use users::{Users, UsersCache};
 
 type ChannelLoad = (ChannelId, f64);
@@ -73,14 +73,13 @@ pub fn check_current_user() {
 fn scan_access_points() -> Vec<Point> {
     match wifiscanner::scan() {
         Ok(points) => {
-            let mut result: Vec<Point> = points.into_iter()
-                .map(|p| {
-                    Point {
-                        ssid: p.ssid,
-                        mac: p.mac,
-                        quality: signal_to_quality(&p.signal_level),
-                        channel: parse_channel(&p.channel),
-                    }
+            let mut result: Vec<Point> = points
+                .into_iter()
+                .map(|p| Point {
+                    ssid: p.ssid,
+                    mac: p.mac,
+                    quality: signal_to_quality(&p.signal_level),
+                    channel: parse_channel(&p.channel),
                 })
                 .collect();
 
@@ -100,12 +99,10 @@ fn scan_access_points() -> Vec<Point> {
 }
 
 fn print_access_points(points: &[Point], current_point: Option<&Point>) {
-    println!("{0:<20} {1:<20} {2:<8} {3:<9} {4}",
-             "ESSID",
-             "Mac",
-             "Quality",
-             "Channel",
-             "Connected");
+    println!(
+        "{0:<20} {1:<20} {2:<8} {3:<9} {4}",
+        "ESSID", "Mac", "Quality", "Channel", "Connected"
+    );
 
     for p in points {
         let connected = if is_current_point(p, current_point) {
@@ -113,12 +110,14 @@ fn print_access_points(points: &[Point], current_point: Option<&Point>) {
         } else {
             ""
         };
-        println!("{0:<20} {1:<20} {2:<8} {3:<9} {4}",
-                 p.ssid,
-                 p.mac,
-                 to_readable_quality(p.quality),
-                 to_readable_channel(p.channel),
-                 connected);
+        println!(
+            "{0:<20} {1:<20} {2:<8} {3:<9} {4}",
+            p.ssid,
+            p.mac,
+            to_readable_quality(p.quality),
+            to_readable_channel(p.channel),
+            connected
+        );
     }
 }
 
@@ -153,7 +152,8 @@ fn compute_channels_load(points: &[Point]) -> ChannelsLoad {
         }
     }
 
-    channels.iter_mut()
+    channels
+        .iter_mut()
         .enumerate()
         .map(|(i, mut load)| {
             let channel = i as ChannelId + 1;
@@ -161,9 +161,9 @@ fn compute_channels_load(points: &[Point]) -> ChannelsLoad {
                 0.0
             } else {
                 let &mut median = median_of_medians_by(&mut load, |a, b| {
-                        a.partial_cmp(b).unwrap_or(cmp::Ordering::Less)
-                    })
-                    .1;
+                    a.partial_cmp(b).unwrap_or(cmp::Ordering::Less)
+                })
+                .1;
                 median
             };
             (channel, load_median)
@@ -222,11 +222,13 @@ fn compute_suggestion(other_points: &[Point]) -> Vec<ChannelId> {
     let mut channels_load = compute_channels_load(other_points);
     channels_load.sort_by(compare_channels_load);
 
-    let mut head = channels_load.iter()
+    let mut head = channels_load
+        .iter()
         .filter(|&&(id, load)| least_intersected(id) && load < LOW_LOAD)
         .collect::<Vec<_>>();
 
-    let mut tail = channels_load.iter()
+    let mut tail = channels_load
+        .iter()
         .filter(|&&(id, _)| {
             head.iter()
                 .find(|&&&(id_from_head, _)| id_from_head == id)
@@ -257,7 +259,8 @@ fn compare_channels_load(a: &ChannelLoad, b: &ChannelLoad) -> cmp::Ordering {
 fn print_suggested_channels(points: &[Point], current_point: Option<&Point>) {
     match current_point {
         Some(point) => {
-            let points: Vec<Point> = points.into_iter()
+            let points: Vec<Point> = points
+                .into_iter()
                 .filter(|x| x.mac != point.mac)
                 .cloned()
                 .collect();
@@ -280,15 +283,16 @@ fn print_suggestion(points: &[Point], what: &str) {
     let xs = compute_suggestion(points);
 
     if !xs.is_empty() {
-        let other_channels: String = xs.iter()
+        let other_channels: String = xs
+            .iter()
             .skip(1)
             .map(|i| i.to_string())
             .collect::<Vec<_>>()
             .join(", ");
-        println!("The best channel for {} is {} (or maybe {})",
-                 what,
-                 xs[0],
-                 other_channels);
+        println!(
+            "The best channel for {} is {} (or maybe {})",
+            what, xs[0], other_channels
+        );
     } else {
         println!("Cannot suggest a good channel for {}", what);
     }
@@ -301,12 +305,15 @@ fn unit_to_percent(x: f64) -> f64 {
 fn to_readable_channels_load(channels_load: ChannelsLoadSlice) -> String {
     let is_zero = |x| x <= std::f64::EPSILON;
 
-    let alot_of_zeros = channels_load.iter()
+    let alot_of_zeros = channels_load
+        .iter()
         .filter(|x| is_zero(x.1))
         .collect::<Vec<_>>()
-        .len() > 1;
+        .len()
+        > 1;
 
-    let mut result: Vec<String> = channels_load.iter()
+    let mut result: Vec<String> = channels_load
+        .iter()
         .filter(|x| !alot_of_zeros || !is_zero(x.1))
         .map(|x| format!("{} is {:.1}%", x.0, unit_to_percent(x.1)))
         .collect();
@@ -352,6 +359,35 @@ fn get_current_point(points: &[Point]) -> Option<&Point> {
     mac.and_then(|m| points.iter().find(|p| m == p.mac))
 }
 
+fn get_current_network_interface() -> Option<String> {
+    const PATH_ENV: &'static str = "PATH";
+    let path_system = "/usr/sbin:/sbin";
+    let path = env::var_os(PATH_ENV).map_or(path_system.to_string(), |v| {
+        format!("{}:{}", v.to_string_lossy().into_owned(), path_system)
+    });
+
+    const COMMAND: &'static str = "iw";
+    let output = Command::new(COMMAND)
+        .env(PATH_ENV, path)
+        .arg("dev")
+        .output();
+
+    match output {
+        Ok(output) => {
+            let data = String::from_utf8_lossy(&output.stdout);
+            return data
+                .split("\tInterface ")
+                .take(2)
+                .last()
+                .and_then(|raw| raw.split("\n").nth(0))
+                .map(|text| text.to_string());
+        }
+        Err(e) => println_err!("Error: {} {:?}", COMMAND, e),
+    }
+
+    None
+}
+
 fn get_current_point_mac() -> Option<String> {
     const PATH_ENV: &'static str = "PATH";
     let path_system = "/usr/sbin:/sbin";
@@ -359,21 +395,27 @@ fn get_current_point_mac() -> Option<String> {
         format!("{}:{}", v.to_string_lossy().into_owned(), path_system)
     });
 
-    const COMMAND: &'static str = "iwconfig";
-    let output = Command::new(COMMAND)
-        .env(PATH_ENV, path)
-        .output();
+    if let Some(interface) = get_current_network_interface() {
+        const COMMAND: &'static str = "iw";
+        let output = Command::new(COMMAND)
+            .env(PATH_ENV, path)
+            .arg("dev")
+            .arg(interface)
+            .arg("link")
+            .output();
 
-    match output {
-        Ok(output) => {
-            let data = String::from_utf8_lossy(&output.stdout);
-            return data.lines()
-                .map(|x| x.split(" Access Point: ").collect::<Vec<&str>>())
-                .filter(|xs| xs.len() == 2 && !xs[1].is_empty())
-                .map(|xs| xs[1].trim_right().to_string())
-                .next();
+        match output {
+            Ok(output) => {
+                let data = String::from_utf8_lossy(&output.stdout);
+                return data
+                    .split("Connected to ")
+                    .take(2)
+                    .last()
+                    .and_then(|raw| raw.split(" (on ").nth(0))
+                    .map(|text| text.to_string());
+            }
+            Err(e) => println_err!("Error: {} {:?}", COMMAND, e),
         }
-        Err(e) => println_err!("Error: {} {:?}", COMMAND, e),
     }
 
     None
@@ -457,13 +499,11 @@ mod tests {
     fn test_compute_suggestion() {
         use super::{compute_suggestion, Point};
 
-        let make_point = |quality, id, ssid: &str| {
-            Point {
-                ssid: ssid.to_string(),
-                mac: "".to_string(),
-                quality: quality,
-                channel: id,
-            }
+        let make_point = |quality, id, ssid: &str| Point {
+            ssid: ssid.to_string(),
+            mac: "".to_string(),
+            quality: quality,
+            channel: id,
         };
 
         let assert_compute_suggestion = |expect: &[ChannelId], input: &[Point]| {
