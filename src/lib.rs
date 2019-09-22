@@ -359,7 +359,7 @@ fn get_current_point(points: &[Point]) -> Option<&Point> {
     mac.and_then(|m| points.iter().find(|p| m == p.mac))
 }
 
-fn get_current_network_interface() -> Option<String> {
+fn get_iw_dev_command() -> Command {
     const PATH_ENV: &'static str = "PATH";
     let path_system = "/usr/sbin:/sbin";
     let path = env::var_os(PATH_ENV).map_or(path_system.to_string(), |v| {
@@ -367,12 +367,13 @@ fn get_current_network_interface() -> Option<String> {
     });
 
     const COMMAND: &'static str = "iw";
-    let output = Command::new(COMMAND)
-        .env(PATH_ENV, path)
-        .arg("dev")
-        .output();
+    let mut command = Command::new(COMMAND);
+    let _ = command.env(PATH_ENV, path).arg("dev");
+    command
+}
 
-    match output {
+fn get_current_network_interface() -> Option<String> {
+    match get_iw_dev_command().output() {
         Ok(output) => {
             let data = String::from_utf8_lossy(&output.stdout);
             return data
@@ -382,29 +383,15 @@ fn get_current_network_interface() -> Option<String> {
                 .and_then(|raw| raw.split("\n").nth(0))
                 .map(|text| text.to_string());
         }
-        Err(e) => println_err!("Error: {} {:?}", COMMAND, e),
+        Err(e) => println_err!("Error: {:?}", e),
     }
 
     None
 }
 
 fn get_current_point_mac() -> Option<String> {
-    const PATH_ENV: &'static str = "PATH";
-    let path_system = "/usr/sbin:/sbin";
-    let path = env::var_os(PATH_ENV).map_or(path_system.to_string(), |v| {
-        format!("{}:{}", v.to_string_lossy().into_owned(), path_system)
-    });
-
     if let Some(interface) = get_current_network_interface() {
-        const COMMAND: &'static str = "iw";
-        let output = Command::new(COMMAND)
-            .env(PATH_ENV, path)
-            .arg("dev")
-            .arg(interface)
-            .arg("link")
-            .output();
-
-        match output {
+        match get_iw_dev_command().arg(interface).arg("link").output() {
             Ok(output) => {
                 let data = String::from_utf8_lossy(&output.stdout);
                 return data
@@ -414,7 +401,7 @@ fn get_current_point_mac() -> Option<String> {
                     .and_then(|raw| raw.split(" (on ").nth(0))
                     .map(|text| text.to_string());
             }
-            Err(e) => println_err!("Error: {} {:?}", COMMAND, e),
+            Err(e) => println_err!("Error: {:?}", e),
         }
     }
 
