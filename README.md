@@ -1,6 +1,7 @@
 [![Build Status](https://api.travis-ci.org/alopatindev/iwls.svg?branch=master)](https://travis-ci.org/alopatindev/iwls)
 [![Coverage Status](https://coveralls.io/repos/github/alopatindev/iwls/badge.svg?branch=master)](https://coveralls.io/github/alopatindev/iwls?branch=master)
 [![codecov.io](http://codecov.io/github/alopatindev/iwls/coverage.svg?branch=master)](https://codecov.io/github/alopatindev/iwls?branch=master)
+[![Dependabot](https://badgen.net/badge/Dependabot/enabled/green?icon=dependabot)](https://dependabot.com/)
 [![Crates.io](https://img.shields.io/crates/v/iwls.svg)](https://crates.io/crates/iwls)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE.txt)
 
