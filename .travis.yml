@@ -14,27 +14,18 @@ rust:
   - beta
   - nightly
 
-env:
-  global:
-    - CARGO_ARGS=""
-
-matrix:
-  include:
-    - rust: nightly
-      env: CARGO_ARGS="--features clippy"
-  exclude:
-    - rust: nightly
-
-before_script: (cargo install rustfmt || true)
+before_script:
+  - rustup component add rustfmt clippy
 
 script:
   - set -e
   - export PATH="${PATH}:${HOME}/.cargo/bin"
   - export RUST_BACKTRACE=1
   - cargo fmt -- --write-mode=diff
-  - cargo build ${CARGO_ARGS} --verbose
-  - cargo test ${CARGO_ARGS} --verbose
-  - cargo run ${CARGO_ARGS} --verbose --bin iwls
+  - cargo clippy -- -D warnings
+  - cargo build --verbose
+  - cargo test --verbose
+  - cargo run --verbose --bin iwls
 
 after_success:
   - scripts/build_kcov.sh
