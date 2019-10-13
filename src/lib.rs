@@ -57,7 +57,7 @@ pub fn list_access_points(clear_term: bool, suggestions: bool) {
     print_access_points(&points, current_point);
 
     if suggestions {
-        println!("");
+        println!();
         print_suggested_channels(&points, current_point);
     }
 }
@@ -99,10 +99,7 @@ fn scan_access_points() -> Vec<Point> {
 }
 
 fn print_access_points(points: &[Point], current_point: Option<&Point>) {
-    println!(
-        "{0:<20} {1:<20} {2:<8} {3:<9} {4}",
-        "ESSID", "Mac", "Quality", "Channel", "Connected"
-    );
+    println!("ESSID                Mac                  Quality  Channel   Connected");
 
     for p in points {
         let connected = if is_current_point(p, current_point) {
@@ -260,7 +257,7 @@ fn print_suggested_channels(points: &[Point], current_point: Option<&Point>) {
     match current_point {
         Some(point) => {
             let points: Vec<Point> = points
-                .into_iter()
+                .iter()
                 .filter(|x| x.mac != point.mac)
                 .cloned()
                 .collect();
@@ -305,12 +302,7 @@ fn unit_to_percent(x: f64) -> f64 {
 fn to_readable_channels_load(channels_load: ChannelsLoadSlice) -> String {
     let is_zero = |x| x <= std::f64::EPSILON;
 
-    let alot_of_zeros = channels_load
-        .iter()
-        .filter(|x| is_zero(x.1))
-        .collect::<Vec<_>>()
-        .len()
-        > 1;
+    let alot_of_zeros = channels_load.iter().filter(|x| is_zero(x.1)).count() > 1;
 
     let mut result: Vec<String> = channels_load
         .iter()
@@ -360,13 +352,13 @@ fn get_current_point(points: &[Point]) -> Option<&Point> {
 }
 
 fn get_iw_dev_command() -> Command {
-    const PATH_ENV: &'static str = "PATH";
+    const PATH_ENV: &str = "PATH";
     let path_system = "/usr/sbin:/sbin";
     let path = env::var_os(PATH_ENV).map_or(path_system.to_string(), |v| {
         format!("{}:{}", v.to_string_lossy().into_owned(), path_system)
     });
 
-    const COMMAND: &'static str = "iw";
+    const COMMAND: &str = "iw";
     let mut command = Command::new(COMMAND);
     let _ = command.env(PATH_ENV, path).arg("dev");
     command
@@ -380,7 +372,7 @@ fn get_current_network_interface() -> Option<String> {
                 .split("\tInterface ")
                 .take(2)
                 .last()
-                .and_then(|raw| raw.split("\n").nth(0))
+                .and_then(|raw| raw.split('\n').nth(0))
                 .map(|text| text.to_string());
         }
         Err(e) => println_err!("Error: {:?}", e),
@@ -447,7 +439,6 @@ mod tests {
         assert_eq!("12.3%", to_readable_quality(0.1234));
     }
 
-    #[allow(float_cmp)]
     #[test]
     fn test_signal_to_quality() {
         use super::signal_to_quality;
@@ -489,7 +480,7 @@ mod tests {
         let make_point = |quality, id, ssid: &str| Point {
             ssid: ssid.to_string(),
             mac: "".to_string(),
-            quality: quality,
+            quality,
             channel: id,
         };
 
