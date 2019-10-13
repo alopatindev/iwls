@@ -16,7 +16,7 @@ clap = "2.33"
 nalgebra = "0.18"
 order-stat = "0.1"
 users = "0.9"
-wifiscanner = "0.4"
+wifiscanner = "0.5"
 
 [features]
 default = []
