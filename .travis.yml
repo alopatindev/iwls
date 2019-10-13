@@ -21,7 +21,7 @@ script:
   - set -e
   - export PATH="${PATH}:${HOME}/.cargo/bin"
   - export RUST_BACKTRACE=1
-  - cargo fmt -- --write-mode=diff
+  - cargo fmt -- --check
   - cargo clippy -- -D warnings
   - cargo build --verbose
   - cargo test --verbose
