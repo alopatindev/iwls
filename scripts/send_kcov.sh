@@ -9,8 +9,9 @@ PKGNAME="$(echo $ORIGIN | sed 's!.*\/!!')"
 shift
 cargo test --no-run || exit $?
 
-for i in $ORIGIN/target/debug/${PKGNAME}*
+for i in $ORIGIN/target/debug/${PKGNAME}-*
 do
+    [ -x "$i" ] || continue
     echo "send_kcov: $i"
     OUTDIR="target/cov/$(basename $i)"
     mkdir -p "${OUTDIR}"
