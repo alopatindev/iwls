@@ -13,7 +13,7 @@ doctest = false
 
 [dependencies]
 clap = "2.33"
-nalgebra = "0.20"
+nalgebra = "0.21"
 order-stat = "0.1"
 users = "0.9"
 wifiscanner = "0.5"
