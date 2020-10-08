@@ -15,7 +15,7 @@ doctest = false
 clap = "2.33"
 nalgebra = "0.20"
 order-stat = "0.1"
-users = "0.9"
+users = "0.11"
 wifiscanner = "0.5"
 
 [features]
