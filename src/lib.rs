@@ -1,11 +1,13 @@
 #![cfg_attr(feature = "clippy", feature(plugin))]
 #![cfg_attr(feature = "clippy", plugin(clippy))]
 
+extern crate itertools;
 extern crate nalgebra;
 extern crate order_stat;
 extern crate users;
 extern crate wifiscanner;
 
+use itertools::Itertools;
 use nalgebra::clamp;
 use order_stat::median_of_medians_by;
 use std::io::Write;
@@ -85,6 +87,7 @@ fn scan_access_points() -> Vec<Point> {
                         signal: format!("{} dBm", p.signal_level),
                         channel: parse_channel(&p.channel),
                     })
+                    .unique_by(|p| p.mac.clone())
                     .collect();
 
                 result.sort_by(|a, b| {
@@ -95,8 +98,8 @@ fn scan_access_points() -> Vec<Point> {
 
                 return result;
             }
-            Err(wifiscanner::Error::NoValue) => {
-                // device is busy, operation not permitted, etc.
+            Err(wifiscanner::Error::CommandFailed(status, _)) if status.code() == Some(240) => {
+                // device is busy
                 thread::sleep(time::Duration::from_millis(1));
             }
             Err(e) => {

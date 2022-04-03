@@ -13,10 +13,11 @@ doctest = false
 
 [dependencies]
 clap = "2.33"
+itertools = "0.10"
 nalgebra = "0.20"
 order-stat = "0.1"
 users = "0.9"
-wifiscanner = "0.5"
+wifiscanner = { git = "https://github.com/alopatindev/wifiscanner", branch = "multiple-network-interfaces" }
 
 [features]
 default = []
