@@ -11,6 +11,7 @@ use order_stat::median_of_medians_by;
 use std::io::Write;
 use std::process::Command;
 use std::{cmp, env};
+use std::{thread, time};
 use users::{Users, UsersCache};
 
 type ChannelLoad = (ChannelId, f64);
@@ -20,7 +21,7 @@ type ChannelsLoadSlice<'a> = &'a [ChannelLoad];
 pub type ChannelId = u8;
 
 pub const MIN_CHANNEL: ChannelId = 1;
-pub const MAX_CHANNEL: ChannelId = 14;
+pub const MAX_CHANNEL: ChannelId = 233;
 pub const UNKNOWN_CHANNEL: ChannelId = 0;
 
 pub const MIN_SIGNAL: f64 = -100.0;
@@ -36,6 +37,7 @@ struct Point {
     ssid: String,
     mac: String,
     quality: f64,
+    signal: String,
     channel: ChannelId,
 }
 
@@ -71,35 +73,42 @@ pub fn check_current_user() {
 }
 
 fn scan_access_points() -> Vec<Point> {
-    match wifiscanner::scan() {
-        Ok(points) => {
-            let mut result: Vec<Point> = points
-                .into_iter()
-                .map(|p| Point {
-                    ssid: p.ssid,
-                    mac: p.mac,
-                    quality: signal_to_quality(&p.signal_level),
-                    channel: parse_channel(&p.channel),
-                })
-                .collect();
+    loop {
+        match wifiscanner::scan() {
+            Ok(points) => {
+                let mut result: Vec<Point> = points
+                    .into_iter()
+                    .map(|p| Point {
+                        ssid: p.ssid,
+                        mac: p.mac,
+                        quality: signal_to_quality(&p.signal_level),
+                        signal: format!("{} dBm", p.signal_level),
+                        channel: parse_channel(&p.channel),
+                    })
+                    .collect();
 
-            result.sort_by(|a, b| {
-                b.quality
-                    .partial_cmp(&a.quality)
-                    .unwrap_or(cmp::Ordering::Less)
-            });
+                result.sort_by(|a, b| {
+                    b.quality
+                        .partial_cmp(&a.quality)
+                        .unwrap_or(cmp::Ordering::Less)
+                });
 
-            result
-        }
-        Err(e) => {
-            println_err!("Error: iwlist {:?}", e);
-            vec![]
+                return result;
+            }
+            Err(wifiscanner::Error::NoValue) => {
+                // device is busy, operation not permitted, etc.
+                thread::sleep(time::Duration::from_millis(1));
+            }
+            Err(e) => {
+                println_err!("Error: iw {:?}", e);
+                return vec![];
+            }
         }
     }
 }
 
 fn print_access_points(points: &[Point], current_point: Option<&Point>) {
-    println!("ESSID                Mac                  Quality  Channel   Connected");
+    println!("ESSID                Mac                  Quality       Channel   Connected");
 
     for p in points {
         let connected = if is_current_point(p, current_point) {
@@ -108,10 +117,11 @@ fn print_access_points(points: &[Point], current_point: Option<&Point>) {
             ""
         };
         println!(
-            "{0:<20} {1:<20} {2:<8} {3:<9} {4}",
+            "{0:<20} {1:<20} {2:<4} ({3:<9}) {4:<9} {5}",
             p.ssid,
             p.mac,
             to_readable_quality(p.quality),
+            p.signal,
             to_readable_channel(p.channel),
             connected
         );
@@ -253,6 +263,7 @@ fn compare_channels_load(a: &ChannelLoad, b: &ChannelLoad) -> cmp::Ordering {
     }
 }
 
+// TODO: take country into account
 fn print_suggested_channels(points: &[Point], current_point: Option<&Point>) {
     match current_point {
         Some(point) => {
@@ -299,6 +310,7 @@ fn unit_to_percent(x: f64) -> f64 {
     x * 100.0
 }
 
+// TODO: table
 fn to_readable_channels_load(channels_load: ChannelsLoadSlice) -> String {
     let is_zero = |x| x <= std::f64::EPSILON;
 
