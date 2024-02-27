@@ -4,6 +4,7 @@
 [![Dependabot](https://badgen.net/badge/Dependabot/enabled/green?icon=dependabot)](https://dependabot.com/)
 [![Crates.io](https://img.shields.io/crates/v/iwls.svg)](https://crates.io/crates/iwls)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE.txt)
+[![FOSSA Status](https://app.fossa.io/api/projects/git%2Bgithub.com%2Falopatindev%2Fiwls.svg?type=shield)](https://app.fossa.io/projects/git%2Bgithub.com%2Falopatindev%2Fiwls?ref=badge_shield)
 
 iwls
 ====
@@ -18,3 +19,7 @@ cargo run --bin iwls -- -w -s
 Licensed under the terms of MIT (read LICENSE.txt for details).
 
 ![Screenshot](https://raw.githubusercontent.com/alopatindev/assets/master/iwls.png)
+
+
+## License
+[![FOSSA Status](https://app.fossa.io/api/projects/git%2Bgithub.com%2Falopatindev%2Fiwls.svg?type=large)](https://app.fossa.io/projects/git%2Bgithub.com%2Falopatindev%2Fiwls?ref=badge_large)
